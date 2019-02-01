@@ -1,1 +1,1 @@
-# clara
+# basic cnn 
