@@ -6,6 +6,8 @@ import keras
 import pandas as pd
 import numpy as np
 
+import scipy.io as sio
+
 
 def readFromExcel(filename, sheet_name, verbose=True):
     df = pd.read_excel(filename, sheet_name=sheet_name)
@@ -33,18 +35,19 @@ x_test, y_test = readFromExcel('/home/willytell/Escritorio/output/pipeline2A/ext
 # y_train = np.random.randint(2, size=(6000, 1))
 
 
-batch_size = 15
+batch_size = 10
 num_classes = 2
-epochs = 3
+epochs = 20
 
 nb_of_samples = x_train.shape[0]   # input: number of samples
 nb_of_features = x_train.shape[1]  # input number of dimensions
 
+#print("nb_of_features: {}.".format(nb_of_features))
 
 # reshape the data into a 4D tensor - (sample_number, x_img_size, y_img_size, num_channels)
 # because the MNIST is greyscale, we only have a single channel - RGB colour images would have 3
-x_train = x_train.reshape(x_train.shape[0], 1, 88)
-x_test = x_test.reshape(x_test.shape[0], 1, 88)
+x_train = x_train.reshape(x_train.shape[0], 1, nb_of_features)
+x_test = x_test.reshape(x_test.shape[0], 1, nb_of_features)
 
 
 # One-hot encoding of y_train labels (only execute once!)
@@ -81,44 +84,48 @@ print(type(x_train))
 # model.add(Dense(2, activation='relu'))
 # model.add(Dense(1, activation='sigmoid'))
 
+num_NN = 10
 
 dropout = 0.5
 
 model = Sequential()
 
 # layer 1
-model.add(Conv1D(3, 4, padding='same', input_shape=(1, 88)))
-model.add(Dropout(dropout))
+model.add(Conv1D(3, 4, padding='same', input_shape=(1, nb_of_features)))
+#model.add(Dropout(dropout))
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(MaxPooling1D(pool_size=1, strides=2))
 
 # layer 2
 model.add(Conv1D(3, 8, padding='same'))
-model.add(Dropout(dropout))
+#model.add(Dropout(dropout))
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(MaxPooling1D(1, strides=2))
 
 # layer 3
 model.add(Conv1D(3, 16, padding='same'))
-model.add(Dropout(dropout))
+#model.add(Dropout(dropout))
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(MaxPooling1D(1, strides=2))
 
 # layer 4
 model.add(Conv1D(3, 32, padding='same'))
-model.add(Dropout(dropout))
+#model.add(Dropout(dropout))
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 
 # layer 5
 model.add(Flatten())
-model.add(Dense(9, activation='relu'))
+model.add(Dense(num_NN))
+model.add(Activation('sigmoid'))
 
 # layer 6 and loss
-model.add(Dense(1, activation='softmax'))
+#model.add(Flatten())
+model.add(Dense(1))
+model.add(Activation('softmax'))
 
 
 # model.compile(optimizer='rmsprop',
@@ -128,7 +135,7 @@ model.add(Dense(1, activation='softmax'))
 model.summary()
 
 model.compile(loss=keras.losses.binary_crossentropy,
-              optimizer=keras.optimizers.SGD(lr=0.1), # keras.optimizers.Adam(), #'rmsprop', optimizer=keras.optimizers.SGD(lr=0.01),
+              optimizer=keras.optimizers.SGD(lr=0.001), # keras.optimizers.Adam(), #'rmsprop', optimizer=keras.optimizers.SGD(lr=0.01),
               metrics=['accuracy'])
 
 # model.fit(
@@ -150,7 +157,7 @@ model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs)
 
 #output = model.get_layer('dense_3').output
 from keras.models import Model
-model2 = Model(inputs=model.input, outputs=model.get_layer('dense_1').output)
+model2 = Model(inputs=model.input, outputs=model.get_layer('activation_5').output)
 
 #print(model2.shape)
 dense_1_features_train = model2.predict(x_train)
@@ -161,4 +168,10 @@ print("dense_1_features_test.shape: {}".format(dense_1_features_test.shape))
 
 print(dense_1_features_train[0:5, :])
 print(y_train[0:5])
+
+
+sio.savemat('/home/willytell/Escritorio/output/pipeline2A/activation/cnnDropout_'+str(num_NN)+'_train.mat', dict([('x_train', dense_1_features_train), ('y_train', y_train)]))
+sio.savemat('/home/willytell/Escritorio/output/pipeline2A/activation/cnnDropout_'+str(num_NN)+'_test.mat', dict([('x_test', dense_1_features_test), ('y_test', y_test)]))
+
+
 print("end.")
